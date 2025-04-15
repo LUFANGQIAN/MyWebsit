@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>卡片式导航页面</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Arial', sans-serif;
+      background-color: #f5f5f5;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+      padding: 20px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+      position: relative;
+      height: 150px;
+      transition: transform 0.3s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+    }
+
+    .card-content {
+      padding: 20px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      transition: opacity 0.3s ease;
+    }
+
+    .site-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      margin-right: 10px;
+      object-fit: cover;
+    }
+
+    .card-title {
+      font-size: 1.2em;
+      margin-bottom: 10px;
+      color: #333;
+    }
+
+    .card-description {
+      color: #666;
+      font-size: 0.9em;
+    }
+
+    .card-hover-content {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .card:hover .card-content {
+      opacity: 0;
+    }
+
+    .card:hover .card-hover-content {
+      opacity: 1;
+    }
+
+    .hover-button {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      color: white;
+      font-weight: bold;
+      transition: background-color 0.3s ease;
+    }
+
+    .visit-btn {
+      background-color: #4CAF50;
+    }
+
+    .settings-btn {
+      background-color: #2196F3;
+    }
+
+    .hover-button:hover {
+      filter: brightness(1.1);
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+    }
+
+    .modal-content {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: white;
+      padding: 20px;
+      border-radius: 10px;
+      min-width: 300px;
+    }
+
+    .close-btn {
+      position: absolute;
+      right: 10px;
+      top: 10px;
+      cursor: pointer;
+      font-size: 1.5em;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+
+    .save-btn {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    .save-btn:hover {
+      background-color: #45a049;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container" id="cardContainer">
+    <!-- 卡片将通过JavaScript动态添加 -->
+  </div>
+
+  <!-- 设置弹窗 -->
+  <div class="modal" id="settingsModal">
+    <div class="modal-content">
+      <span class="close-btn" onclick="closeModal()">&times;</span>
+      <h2>编辑网站</h2>
+      <form id="settingsForm">
+        <div class="form-group">
+          <label for="siteName">网站名称</label>
+          <input type="text" id="siteName" required>
+        </div>
+        <div class="form-group">
+          <label for="siteUrl">网站地址</label>
+          <input type="url" id="siteUrl" required>
+        </div>
+        <div class="form-group">
+          <label for="siteDescription">网站描述</label>
+          <input type="text" id="siteDescription" required>
+        </div>
+        <button type="submit" class="save-btn">保存</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // 示例数据
+    let sites = [
+      {
+        id: 1,
+        name: '示例网站1',
+        url: 'https://example1.com',
+        description: '这是一个示例网站描述',
+        iconUrl: null
+      },
+      {
+        id: 2,
+        name: '示例网站2',
+        url: 'https://example2.com',
+        description: '另一个示例网站描述',
+        iconUrl: null
+      }
+    ];
+
+    // 当前编辑的卡片ID
+    let currentEditId = null;
+
+    // 渲染卡片
+    function renderCards() {
+      const container = document.getElementById('cardContainer');
+      container.innerHTML = '';
+
+      sites.forEach(site => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+                    <div class="card-content">
+                        <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                            <img src="${site.iconUrl || 'https://www.google.com/s2/favicons?domain=' + new URL(site.url).hostname}" 
+                                 class="site-icon" 
+                                 onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'32\' height=\'32\' viewBox=\'0 0 24 24\'%3E%3Cpath fill=\'%23ccc\' d=\'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z\'/%3E%3C/svg%3E';"/>
+                            <h3 class="card-title">${site.name}</h3>
+                        </div>
+                        <p class="card-description">${site.description}</p>
+                    </div>
+                    <div class="card-hover-content">
+                        <a href="${site.url}" class="hover-button visit-btn" target="_blank">前往</a>
+                        <a href="#" class="hover-button settings-btn" onclick="openSettings(${site.id}); event.preventDefault();">设置</a>
+                    </div>
+                `;
+        container.appendChild(card);
+      });
+    }
+
+    // 打开设置弹窗
+    function openSettings(id) {
+      currentEditId = id;
+      const site = sites.find(s => s.id === id);
+      if (site) {
+        document.getElementById('siteName').value = site.name;
+        document.getElementById('siteUrl').value = site.url;
+        document.getElementById('siteDescription').value = site.description;
+        document.getElementById('settingsModal').style.display = 'block';
+      }
+    }
+
+    // 关闭设置弹窗
+    function closeModal() {
+      document.getElementById('settingsModal').style.display = 'none';
+      currentEditId = null;
+    }
+
+    // 保存设置
+    document.getElementById('settingsForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      if (currentEditId) {
+        const siteIndex = sites.findIndex(s => s.id === currentEditId);
+        if (siteIndex !== -1) {
+          sites[siteIndex] = {
+            id: currentEditId,
+            name: document.getElementById('siteName').value,
+            url: document.getElementById('siteUrl').value,
+            description: document.getElementById('siteDescription').value,
+            iconUrl: null
+          };
+          renderCards();
+          closeModal();
+        }
+      }
+    });
+
+    // 初始渲染
+    renderCards();
+  </script>
+</body>
+
+</html>
